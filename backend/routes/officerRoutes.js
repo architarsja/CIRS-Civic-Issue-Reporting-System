@@ -1,0 +1,1 @@
+const r=require('express').Router();const c=require('../controllers/officerController');const auth=require('../middleware/auth');const role=require('../middleware/role');r.use(auth,role('OFFICER'));r.get('/dashboard',c.dashboard);r.get('/complaints',c.complaints);r.put('/complaints/:id/status',c.status);module.exports=r;

@@ -1,0 +1,17 @@
+require('dotenv').config();
+const express=require('express');const cors=require('cors');
+const authRoutes=require('./routes/authRoutes'),complaintRoutes=require('./routes/complaintRoutes'),adminRoutes=require('./routes/adminRoutes'),officerRoutes=require('./routes/officerRoutes'),notificationRoutes=require('./routes/notificationRoutes'),feedbackRoutes=require('./routes/feedbackRoutes');
+const errorHandler=require('./middleware/errorHandler');
+const app=express();
+app.use(cors({origin:true,credentials:true}));
+app.use(express.json({limit:'1mb'}));
+app.get('/api/health',(req,res)=>res.json({success:true,message:'CIRS API is running'}));
+app.use('/api/auth',authRoutes);
+app.use('/api/complaints',complaintRoutes);
+app.use('/api/admin',adminRoutes);
+app.use('/api/officer',officerRoutes);
+app.use('/api/notifications',notificationRoutes);
+app.use('/api/feedback',feedbackRoutes);
+app.use(errorHandler);
+const PORT=process.env.PORT||5000;
+app.listen(PORT,()=>console.log(`CIRS backend running on port ${PORT}`));

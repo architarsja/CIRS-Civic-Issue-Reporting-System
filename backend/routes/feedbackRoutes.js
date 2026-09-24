@@ -1,0 +1,1 @@
+const r=require('express').Router();const c=require('../controllers/feedbackController');const auth=require('../middleware/auth');r.post('/:complaintId',auth,c.create);r.get('/:complaintId',auth,c.list);module.exports=r;

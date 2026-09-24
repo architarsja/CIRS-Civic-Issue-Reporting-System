@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Complaints</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .action-cell select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="nav">
+    <a class="brand" href="../index.html">CIRS</a>
+    <div class="navlinks">
+        <a href="dashboard.html">Dashboard</a>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="sidebar">
+    <a href="dashboard.html">🏠 Dashboard</a>
+    <a href="complaints.html">📋 Complaints</a>
+    <a href="users.html">👥 Users</a>
+    <a href="officers.html">🧑‍💼 Officers</a>
+</div>
+
+<main class="main">
+    <div class="container">
+        <h1>Complaint Management</h1>
+
+        <div class="card table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Citizen</th>
+                        <th>Status</th>
+                        <th>Officer</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="list">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Loading complaints...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/api.js"></script>
+
+<script>
+let officersList = [];
+
+// Wait for DOM to load fully
+document.addEventListener('DOMContentLoaded', async () => {
+    if (guard('ADMIN')) {
+        await initPage();
+    }
+});
+
+async function initPage() {
+    await loadOfficers();
+    await loadComplaints();
+}
+
+// 1. Fetch officers for the dropdown options
+async function loadOfficers() {
+    try {
+        const res = await api('/admin/officers');
+        officersList = res.data || res || [];
+    } catch (e) {
+        console.error("Failed to load officers:", e);
+    }
+}
+
+// 2. Fetch and display complaints
+async function loadComplaints() {
+    const list = document.getElementById('list');
+    try {
+        const r = await api('/admin/complaints');
+        const complaints = r.data || r || [];
+
+        if (complaints.length === 0) {
+            list.innerHTML = '<tr><td colspan="7" style="text-align:center;">No complaints found.</td></tr>';
+            return;
+        }
+
+        list.innerHTML = complaints.map(c => {
+            let actionUI = '';
+
+            if (c.status === 'Resolved' || c.status === 'Completed') {
+                actionUI = '<span style="color: #888;">Completed</span>';
+            } else {
+                const options = officersList.map(o => 
+                    `<option value="${o.id}">${o.name}</option>`
+                ).join('');
+
+                const buttonText = c.officer_name ? 'Reassign' : 'Assign';
+
+                actionUI = `
+                    <div class="action-cell">
+                        <select id="select-${c.id}">
+                            <option value="">Select Officer</option>
+                            ${options}
+                        </select>
+                        <button class="btn btn-primary" onclick="assignOfficer(${c.id})">${buttonText}</button>
+                    </div>
+                `;
+            }
+
+            return `
+                <tr>
+                    <td>#${c.id}</td>
+                    <td>${c.title}</td>
+                    <td>${c.category}</td>
+                    <td>${c.citizen_name || 'N/A'}</td>
+                    <td><span class="badge">${c.status}</span></td>
+                    <td>${c.officer_name || 'Unassigned'}</td>
+                    <td>${actionUI}</td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (e) {
+        toast(e.message || 'Failed to load complaints');
+        list.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">${e.message}</td></tr>`;
+    }
+}
+
+// 3. Assign / Reassign action handler
+async function assignOfficer(complaintId) {
+    const selectEl = document.getElementById(`select-${complaintId}`);
+    const officerId = selectEl ? selectEl.value : null;
+
+    if (!officerId) {
+        alert('Please select an officer from the dropdown first.');
+        return;
+    }
+
+    try {
+        await api('/admin/assign', {
+            method: 'POST',
+            body: { 
+                complaint_id: parseInt(complaintId),
+                officer_id: parseInt(officerId)
+            }
+        });
+
+        toast('Officer assigned successfully!');
+        await loadComplaints(); // Reload the table
+    } catch (e) {
+        toast(e.message || 'Assignment failed');
+    }
+}
+</script>
+
+</body>
+</html>

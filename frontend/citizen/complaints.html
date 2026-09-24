@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Complaints</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* Basic styling for assignment modal */
+        .modal {
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #fff; padding: 20px; border-radius: 8px; width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="nav">
+    <a class="brand" href="../index.html">CIRS</a>
+    <div class="navlinks">
+        <a href="dashboard.html">Dashboard</a>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="sidebar">
+    <a href="dashboard.html">🏠 Dashboard</a>
+    <a href="complaints.html">📋 Complaints</a>
+    <a href="users.html">👥 Users</a>
+    <a href="officers.html">🧑‍💼 Officers</a>
+</div>
+
+<main class="main">
+    <div class="container">
+        <h1>Complaint Management</h1>
+
+        <div class="card table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Citizen</th>
+                        <th>Status</th>
+                        <th>Officer</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="list"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Modal for Assigning Officer -->
+<div id="assignModal" class="modal">
+    <div class="modal-content">
+        <h3>Assign Officer</h3>
+        <p>Select officer for Complaint #<span id="modalComplaintId"></span>:</p>
+        <select id="officerSelect" style="width: 100%; padding: 8px; margin-bottom: 12px;">
+            <option value="">Select Officer</option>
+        </select>
+        <button class="btn btn-primary" onclick="submitAssignment()">Assign</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/api.js"></script>
+
+<script>
+let selectedComplaintId = null;
+let officersList = [];
+
+if (guard('ADMIN')) {
+    (async () => {
+        await loadOfficers();
+        await loadComplaints();
+    })();
+}
+
+// 1. Fetch available officers for assignment
+async function loadOfficers() {
+    try {
+        const res = await api('/admin/officers');
+        officersList = res.data;
+        const select = document.getElementById('officerSelect');
+        select.innerHTML = '<option value="">Select Officer</option>' + 
+            officersList.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+// 2. Fetch and render complaints with action buttons
+async function loadComplaints() {
+    try {
+        const r = await api('/admin/complaints');
+        const list = document.getElementById('list');
+
+        list.innerHTML = r.data.map(c => {
+            let actionBtn = '';
+            
+            if (c.status === 'Resolved' || c.status === 'Completed') {
+                actionBtn = `<span style="color: #888;">Completed</span>`;
+            } else if (c.officer_name) {
+                actionBtn = `<button class="btn btn-secondary" onclick="openAssignModal(${c.id})">Reassign</button>`;
+            } else {
+                actionBtn = `<button class="btn btn-primary" onclick="openAssignModal(${c.id})">Assign</button>`;
+            }
+
+            return `
+                <tr>
+                    <td>#${c.id}</td>
+                    <td>${c.title}</td>
+                    <td>${c.category}</td>
+                    <td>${c.citizen_name}</td>
+                    <td><span class="badge">${c.status}</span></td>
+                    <td>${c.officer_name || 'Unassigned'}</td>
+                    <td>${actionBtn}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        toast(e.message);
+    }
+}
+
+// 3. Handle Assign Modal Display
+function openAssignModal(complaintId) {
+    selectedComplaintId = complaintId;
+    document.getElementById('modalComplaintId').textContent = complaintId;
+    document.getElementById('assignModal').style.display = 'flex';
+}
+
+function closeModal() {
+    selectedComplaintId = null;
+    document.getElementById('assignModal').style.display = 'none';
+}
+
+// 4. Submit Assignment to API Backend
+async function submitAssignment() {
+    const officerId = document.getElementById('officerSelect').value;
+    if (!officerId) {
+        alert('Please select an officer');
+        return;
+    }
+
+    try {
+        await api(`/admin/complaints/${selectedComplaintId}/assign`, {
+            method: 'POST', // Adjust method (PUT/POST/PATCH) according to your backend route
+            body: { officer_id: officerId }
+        });
+        toast('Officer assigned successfully!');
+        closeModal();
+        loadComplaints(); // Refresh list
+    } catch (e) {
+        toast(e.message);
+    }
+}
+</script>
+
+</body>
+</html>

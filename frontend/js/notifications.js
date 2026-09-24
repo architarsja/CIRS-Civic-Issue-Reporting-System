@@ -1,0 +1,1 @@
+async function loadNotifications(){try{const r=await api('/notifications');const list=document.getElementById('notificationList');if(list)list.innerHTML=r.data.map(n=>`<div class="card"><b>${n.title}</b><p>${n.message}</p><small class="muted">${new Date(n.created_at).toLocaleString()}</small></div>`).join('')||'<p>No notifications.</p>'}catch(e){toast(e.message)}}

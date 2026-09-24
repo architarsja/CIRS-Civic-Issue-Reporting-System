@@ -1,0 +1,512 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <title>Officers - CIRS</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<!-- ================= NAVBAR ================= -->
+
+<div class="nav">
+
+    <a class="brand" href="../index.html">
+        CIRS
+    </a>
+
+    <div class="navlinks">
+
+        <a href="dashboard.html">
+            Dashboard
+        </a>
+
+        <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- ================= SIDEBAR ================= -->
+
+<div class="sidebar">
+
+    <a href="dashboard.html">
+        🏠 Dashboard
+    </a>
+
+    <a href="complaints.html">
+        📋 Complaints
+    </a>
+
+    <a href="users.html">
+        👥 Users
+    </a>
+
+    <a href="officers.html">
+        🧑‍💼 Officers
+    </a>
+
+</div>
+
+
+<!-- ================= MAIN CONTENT ================= -->
+
+<main class="main">
+
+    <div class="container">
+
+        <h1>Officer Management</h1>
+
+
+        <!-- ================= ADD OFFICER ================= -->
+
+        <div
+            class="card form"
+            style="margin-left:0">
+
+            <h2>Add Officer</h2>
+
+            <div id="officerMessage"></div>
+
+
+            <form id="addOfficerForm">
+
+                <!-- NAME -->
+
+                <label for="officerName">
+                    Name
+                </label>
+
+                <input
+                    id="officerName"
+                    type="text"
+                    placeholder="Enter officer name"
+                    required>
+
+
+                <!-- EMAIL -->
+
+                <label for="officerEmail">
+                    Email
+                </label>
+
+                <input
+                    id="officerEmail"
+                    type="email"
+                    placeholder="Enter officer email"
+                    required>
+
+
+                <!-- PASSWORD -->
+
+                <label for="officerPassword">
+                    Password
+                </label>
+
+                <input
+                    id="officerPassword"
+                    type="password"
+                    placeholder="Enter officer password"
+                    required>
+
+
+                <!-- PHONE -->
+
+                <label for="officerPhone">
+                    Phone
+                </label>
+
+                <input
+                    id="officerPhone"
+                    type="text"
+                    placeholder="Enter phone number">
+
+
+                <!-- DEPARTMENT -->
+
+                <label for="officerDepartment">
+                    Department ID
+                </label>
+
+                <input
+                    id="officerDepartment"
+                    type="number"
+                    placeholder="Enter department ID">
+
+
+                <!-- BUTTON -->
+
+                <button
+                    type="submit"
+                    class="btn btn-primary">
+
+                    Add Officer
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+        <!-- ================= OFFICER LIST ================= -->
+
+        <div class="card table-wrap">
+
+            <h2>Officers</h2>
+
+            <table class="table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Name</th>
+
+                        <th>Email</th>
+
+                        <th>Department</th>
+
+                        <th>Active</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="officerList">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+<!-- ================= TOAST ================= -->
+
+<div
+    id="toast"
+    class="toast">
+</div>
+
+
+<!-- ================= JAVASCRIPT ================= -->
+
+<script src="../js/api.js"></script>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    // ==========================================
+    // ADMIN ACCESS CHECK
+    // ==========================================
+
+    if (!guard('ADMIN')) {
+        return;
+    }
+
+
+    // ==========================================
+    // GET HTML ELEMENTS
+    // ==========================================
+
+    const addOfficerForm =
+        document.getElementById('addOfficerForm');
+
+    const officerList =
+        document.getElementById('officerList');
+
+    const officerMessage =
+        document.getElementById('officerMessage');
+
+
+    // ==========================================
+    // LOAD OFFICERS
+    // ==========================================
+
+    async function loadOfficers() {
+
+        try {
+
+            const response =
+                await api('/admin/officers');
+
+            const officers =
+                response.data || [];
+
+
+            if (officers.length === 0) {
+
+                officerList.innerHTML =
+                    `<tr>
+                        <td colspan="4">
+                            No officers found.
+                        </td>
+                    </tr>`;
+
+                return;
+            }
+
+
+            officerList.innerHTML =
+                officers.map(function (officer) {
+
+                    return `
+                        <tr>
+
+                            <td>
+                                ${officer.name || '-'}
+                            </td>
+
+                            <td>
+                                ${officer.email || '-'}
+                            </td>
+
+                            <td>
+                                ${officer.department || '-'}
+                            </td>
+
+                            <td>
+                                ${officer.is_active ? 'Yes' : 'No'}
+                            </td>
+
+                        </tr>
+                    `;
+
+                }).join('');
+
+        } catch (error) {
+
+            console.error(
+                'LOAD OFFICERS ERROR:',
+                error
+            );
+
+            officerList.innerHTML =
+                `<tr>
+                    <td colspan="4">
+                        Failed to load officers.
+                    </td>
+                </tr>`;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // ADD OFFICER
+    // ==========================================
+
+    addOfficerForm.addEventListener(
+        'submit',
+        async function (event) {
+
+            event.preventDefault();
+
+
+            // --------------------------------------
+            // GET FORM VALUES
+            // --------------------------------------
+
+            const name =
+                document
+                    .getElementById('officerName')
+                    .value
+                    .trim();
+
+
+            const email =
+                document
+                    .getElementById('officerEmail')
+                    .value
+                    .trim();
+
+
+            const password =
+                document
+                    .getElementById('officerPassword')
+                    .value;
+
+
+            const phone =
+                document
+                    .getElementById('officerPhone')
+                    .value
+                    .trim();
+
+
+            const departmentId =
+                document
+                    .getElementById('officerDepartment')
+                    .value;
+
+
+            // --------------------------------------
+            // FRONTEND VALIDATION
+            // --------------------------------------
+
+            if (!name) {
+
+                alert('Please enter officer name.');
+
+                return;
+
+            }
+
+
+            if (!email) {
+
+                alert('Please enter officer email.');
+
+                return;
+
+            }
+
+
+            if (!password) {
+
+                alert('Please enter officer password.');
+
+                return;
+
+            }
+
+
+            if (password.length < 6) {
+
+                alert(
+                    'Password must contain at least 6 characters.'
+                );
+
+                return;
+
+            }
+
+
+            // --------------------------------------
+            // SEND TO BACKEND
+            // --------------------------------------
+
+            try {
+
+                console.log(
+                    'Sending officer data:',
+                    {
+                        name: name,
+                        email: email,
+                        passwordProvided: !!password,
+                        phone: phone,
+                        department_id:
+                            departmentId || null
+                    }
+                );
+
+
+                const response =
+                    await api(
+                        '/admin/officers',
+                        {
+                            method: 'POST',
+
+                            body: JSON.stringify({
+
+                                name: name,
+
+                                email: email,
+
+                                password: password,
+
+                                phone: phone || null,
+
+                                department_id:
+                                    departmentId
+                                        ? Number(departmentId)
+                                        : null
+
+                            })
+                        }
+                    );
+
+
+                // ----------------------------------
+                // SUCCESS
+                // ----------------------------------
+
+                alert(
+                    response.message ||
+                    'Officer added successfully.'
+                );
+
+
+                addOfficerForm.reset();
+
+
+                officerMessage.textContent =
+                    'Officer added successfully.';
+
+                officerMessage.className =
+                    'msg success';
+
+
+                // Refresh officer list
+
+                await loadOfficers();
+
+
+            } catch (error) {
+
+                console.error(
+                    'ADD OFFICER ERROR:',
+                    error
+                );
+
+
+                alert(
+                    error.message ||
+                    'Failed to add officer.'
+                );
+
+
+                officerMessage.textContent =
+                    error.message ||
+                    'Failed to add officer.';
+
+                officerMessage.className =
+                    'msg error';
+
+            }
+
+        }
+    );
+
+
+    // ==========================================
+    // INITIAL LOAD
+    // ==========================================
+
+    loadOfficers();
+
+});
+
+</script>
+
+</body>
+</html>

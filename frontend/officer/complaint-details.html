@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Officer Complaint</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<div class="nav">
+    <a class="brand" href="../index.html">CIRS</a>
+    <div class="navlinks">
+        <a href="dashboard.html">Dashboard</a>
+        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="sidebar">
+    <a href="dashboard.html">🏠 Dashboard</a>
+    <a href="complaints.html">📋 Assigned Complaints</a>
+</div>
+
+<main class="main">
+    <div class="container">
+        <div class="card form">
+            <h1>Update Complaint</h1>
+            <div id="detail"></div>
+            
+            <form id="statusForm">
+                <label>Status</label>
+                <select id="status">
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+                
+                <label>Resolution note</label>
+                <textarea id="note"></textarea>
+                
+                <button class="btn btn-primary" type="submit">Update Status</button>
+            </form>
+        </div>
+    </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="../js/api.js"></script>
+
+<script>
+if (guard('OFFICER')) (async () => {
+    const id = new URLSearchParams(location.search).get('id');
+    const detailEl = document.getElementById('detail');
+    const statusEl = document.getElementById('status');
+    const noteEl = document.getElementById('note');
+    const formEl = document.getElementById('statusForm');
+
+    try {
+        const res = await api('/officer/complaints');
+        const list = res.data || [];
+        const d = list.find(c => c.id == id);
+
+        if (!d) {
+            detailEl.innerHTML = '<p>Complaint not found or not assigned to you.</p>';
+            return;
+        }
+
+        detailEl.innerHTML = `
+            <h2>#${d.id} · ${d.title}</h2>
+            <p>${d.description || ''}</p>
+            <p>Citizen: ${d.citizen_name || 'CIRS Citizen'}</p>
+            <span class="badge ${d.status ? d.status.replaceAll(' ', '-') : ''}">${d.status}</span>
+        `;
+
+        // Pre-select current status or default to 'In Progress' if 'Assigned'
+        statusEl.value = (d.status === 'Assigned' || !d.status) ? 'In Progress' : d.status;
+        noteEl.value = d.resolution_note || '';
+
+        formEl.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                // Pass a raw object (api.js handles JSON stringification)
+                await api(`/officer/complaints/${id}/status`, {
+                    method: 'PUT',
+                    body: {
+                        status: statusEl.value,
+                        resolution_note: noteEl.value
+                    }
+                });
+
+                toast('Updated successfully!');
+                setTimeout(() => {
+                    location.href = 'complaints.html';
+                }, 1000);
+            } catch (x) {
+                alert(x.message);
+            }
+        });
+
+    } catch (e) {
+        toast(e.message);
+    }
+})();
+</script>
+
+</body>
+</html>
