@@ -2,9 +2,7 @@
 // CIRS API CONFIGURATION
 // ==========================================
 
-const API =
-    localStorage.getItem('cirs_api') ||
-    'http://localhost:5000/api';
+const API = localStorage.getItem('cirs_api') || '/api';
 
 
 // ==========================================
